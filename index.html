@@ -1132,14 +1132,14 @@ window.renderTrades = function() {
     const label = key==='no-date' ? 'No date' :
       (() => { const d=new Date(key+'T00:00:00'); return DAY_NAMES[d.getDay()]+', '+d.toLocaleDateString('en-BD',{month:'short',day:'numeric'}); })();
 
-    return \`<div class="day-group">
+   return `<div class="day-group">
       <div class="day-group-header">
-        <div class="day-group-label">\${label}</div>
+       <div class="day-group-label">${label}</div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap">
-          \${dBuy>0?\`<span style="font-size:12px;font-weight:600;color:var(--green)">+\${dBuy.toFixed(2)} USDT</span>\`:''}
-          \${dSell>0?\`<span style="font-size:12px;font-weight:600;color:var(--red)">-\${dSell.toFixed(2)} USDT</span>\`:''}
-          \${dBDT>0?\`<span style="font-size:12px;color:var(--text3)">৳\${Math.round(dBDT).toLocaleString()}</span>\`:''}
-          \${dProfit>0?\`<span style="font-size:11px;color:var(--green);font-weight:500">+৳\${Math.round(dProfit)}</span>\`:''}
+          ${dBuy>0?\`<span style="font-size:12px;font-weight:600;color:var(--green)">+\${dBuy.toFixed(2)} USDT</span>\`:''}
+          ${dSell>0?\`<span style="font-size:12px;font-weight:600;color:var(--red)">-\${dSell.toFixed(2)} USDT</span>\`:''}
+          ${dBDT>0?\`<span style="font-size:12px;color:var(--text3)">৳\${Math.round(dBDT).toLocaleString()}</span>\`:''}
+          ${dProfit>0?\`<span style="font-size:11px;color:var(--green);font-weight:500">+৳\${Math.round(dProfit)}</span>\`:''}
         </div>
         <div class="day-group-line"></div>
       </div>
