@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>My Life Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;
+  --text:#1a1916;--text2:#6b6960;--text3:#a09e96;
+  --purple:#6c5ce7;--purple-light:#ede9ff;--purple-dark:#4a3fc2;
+  --green:#00b894;--green-light:#e0f7f3;
+  --amber:#e17055;--amber-light:#fef0eb;
+  --red:#d63031;--red-light:#fdeaea;
+  --blue:#0984e3;--blue-light:#e8f4fd;
+  --radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.layout{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;position:fixed;top:0;left:0;bottom:0;z-index:10;overflow-y:auto;height:100vh}
+.logo{font-size:16px;font-weight:600;color:var(--text);padding:0 .5rem 1.25rem;border-bottom:1px solid var(--border);margin-bottom:.5rem;letter-spacing:-.3px}
+.logo span{color:var(--purple)}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border:none;background:none;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:13.5px;cursor:pointer;border-radius:var(--radius-sm);width:100%;text-align:left;transition:all .15s}
+.nav-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-btn.active{background:var(--purple-light);color:var(--purple);font-weight:500}
+.nav-icon{font-size:18px;width:20px;text-align:center}
+.nav-section-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:8px 12px 4px}
+.sync-status{padding:6px 12px;font-size:11px;border-radius:var(--radius-sm);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sync-dot.green{background:var(--green)}.sync-dot.amber{background:var(--amber)}.sync-dot.red{background:var(--red)}
+.today-info{padding:.75rem;background:var(--surface2);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);line-height:1.5}
+.today-info strong{color:var(--text2);display:block;margin-bottom:2px}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;padding:2rem;max-width:940px}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:1.5rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.4px}
+.page-sub{font-size:13px;color:var(--text3);margin-top:3px}
+
+/* LOADING OVERLAY */
+.loading-overlay{position:fixed;inset:0;background:rgba(245,244,240,.92);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.loading-overlay.hidden{display:none}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text2)}
+
+/* RANGE TABS */
+.range-tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:var(--radius-sm)}
+.range-tab{padding:5px 14px;font-size:12px;font-weight:500;border:none;background:none;border-radius:6px;cursor:pointer;color:var(--text3);font-family:'DM Sans',sans-serif;transition:all .15s}
+.range-tab.active{background:var(--surface);color:var(--purple);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* METRICS */
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1rem}
+.metric-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.metric-value{font-size:24px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+.metric-value.green{color:var(--green)}.metric-value.amber{color:var(--amber)}.metric-value.red{color:var(--red)}.metric-value.purple{color:var(--purple)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:1rem}
+.card-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+
+/* CHART */
+.chart-wrap{position:relative;height:220px}
+
+/* FORM */
+.form-grid{display:grid;gap:8px;margin-bottom:12px}
+.form-grid.two{grid-template-columns:1fr 1fr}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+input,select{width:100%;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);outline:none;transition:border .15s}
+input:focus,select:focus{border-color:var(--purple);background:var(--surface)}
+label{font-size:12px;color:var(--text3);display:block;margin-bottom:3px}
+.field{display:flex;flex-direction:column}
+.btn{padding:8px 18px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--purple);color:#fff}.btn-primary:hover{background:var(--purple-dark)}
+.btn-sm{padding:5px 12px;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif;transition:all .15s}
+.btn-sm:hover{background:var(--border)}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:3px 6px;border-radius:4px;transition:all .15s}
+.btn-del:hover{color:var(--red);background:var(--red-light)}
+.btn-edit{background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:3px 6px;border-radius:4px;transition:all .15s}
+.btn-edit:hover{color:var(--purple);background:var(--purple-light)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:1.25rem;color:var(--text)}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem}
+.btn-cancel{padding:8px 16px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid var(--border);background:var(--surface2);border-radius:var(--radius-sm);cursor:pointer;color:var(--text2)}
+
+/* HABITS */
+.habit-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.habit-item:last-child{border-bottom:none}
+.habit-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.habit-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.habit-name{font-size:14px}.habit-name.done{text-decoration:line-through;color:var(--text3)}
+.habit-time-info{font-size:11px;color:var(--text3);display:flex;gap:8px}
+.check-btn{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;flex-shrink:0}
+.check-btn.done{background:var(--green);border-color:var(--green);color:#fff}
+.streak{font-size:11px;padding:2px 8px;background:var(--purple-light);color:var(--purple);border-radius:20px;font-weight:500;white-space:nowrap}
+.progress-wrap{margin:12px 0 6px}
+.progress-bar{height:6px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--green));border-radius:4px;transition:width .4s ease}
+.progress-label{font-size:12px;color:var(--text3);margin-top:5px}
+
+/* DAY GROUPS */
+.day-group{margin-bottom:1.25rem}
+.day-group-header{display:flex;align-items:center;gap:10px;margin-bottom:.5rem}
+.day-group-label{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.day-group-today{font-size:11px;padding:2px 8px;background:var(--purple-light);color:var(--purple);border-radius:20px;font-weight:500}
+.day-group-line{flex:1;height:1px;background:var(--border)}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;transition:box-shadow .15s}
+.task-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.task-card.overdue{border-left:3px solid var(--red);background:#fff8f8}
+.task-card.done-card{opacity:0.5}
+.task-card-left{flex:1;min-width:0}
+.task-card-name{font-size:14px;font-weight:500;margin-bottom:4px}
+.task-card-name.striked{text-decoration:line-through;color:var(--text3)}
+.task-card-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.task-card-right{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.task-time-badge{font-size:11px;color:var(--text3)}
+
+/* BADGES */
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px}
+.badge-green{background:var(--green-light);color:#007a63}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-amber{background:var(--amber-light);color:#b85a38}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-purple{background:var(--purple-light);color:var(--purple)}
+
+/* CATEGORY */
+.cat-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.cat-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text2)}
+.cat-tag button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0;line-height:1}
+.cat-add-row{display:flex;gap:6px}
+.cat-add-row input{flex:1;padding:6px 10px;font-size:12px}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+.empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
+.status-select{padding:4px 8px!important;font-size:12px!important;width:auto!important;border-radius:20px!important}
+
+/* HEATMAP */
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:8px}
+.heatmap-cell{aspect-ratio:1;border-radius:3px;background:var(--surface2)}
+.heatmap-cell.h1{background:#c4b5fd}.heatmap-cell.h2{background:#a78bfa}.heatmap-cell.h3{background:#7c3aed}.heatmap-cell.h4{background:#4c1d95}
+.heatmap-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px}
+.heatmap-day{font-size:10px;color:var(--text3);text-align:center}
+.cat-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cat-bar-label{font-size:12px;color:var(--text2);width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.cat-bar-count{font-size:12px;color:var(--text3);width:30px;text-align:right;flex-shrink:0}
+.overdue-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.overdue-item:last-child{border-bottom:none}
+.overdue-days{font-size:11px;padding:2px 8px;background:var(--red-light);color:var(--red);border-radius:20px;font-weight:500}
+.day-rank{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.day-rank:last-child{border-bottom:none}
+.day-rank-num{font-size:18px;font-weight:600;font-family:'DM Mono',monospace;width:32px;color:var(--text3)}
+.day-rank-label{flex:1;font-size:13px}
+.day-rank-pct{font-size:12px;font-weight:500;padding:2px 8px;border-radius:20px}
+
+/* BOTTOM NAV */
+.bottom-nav{display:none}
+@media(max-width:680px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:.875rem;padding-bottom:75px}
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:var(--surface);border-top:1px solid var(--border);
+    z-index:20;padding:4px 0 env(safe-area-inset-bottom,4px);
+  }
+  .bnav-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:5px 2px;border:none;background:none;cursor:pointer;
+    font-size:9px;font-family:'DM Sans',sans-serif;color:var(--text3);transition:color .15s;
+  }
+  .bnav-btn .bicon{font-size:19px;line-height:1}
+  .bnav-btn.active{color:var(--purple)}
+  .page-title{font-size:17px}
+  .metric-value{font-size:18px}
+  .metric-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .form-grid.three{grid-template-columns:1fr 1fr}
+  .card-row{grid-template-columns:1fr}
+  .card{padding:1rem}
+  .task-card-right{flex-direction:column;gap:3px}
+  .table-wrap table{font-size:12px}
+  th,td{padding:7px 8px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Firebase-এ connect হচ্ছে...</div>
+</div>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="logo">My <span>Dashboard</span></div>
+  <div class="sync-status" id="syncStatus">
+    <div class="sync-dot amber" id="syncDot"></div>
+    <span id="syncText" style="font-size:11px;color:var(--text3)">Connecting...</span>
+  </div>
+  <div class="nav-section-label">Tracker</div>
+  <button class="nav-btn active" onclick="switchPage('habits',this)"><span class="nav-icon">✅</span> Habits</button>
+  <button class="nav-btn" onclick="switchPage('weekly',this)"><span class="nav-icon">📅</span> Weekly Plan</button>
+  <button class="nav-btn" onclick="switchPage('fbads',this)"><span class="nav-icon">🎯</span> FB Ads</button>
+  <button class="nav-btn" onclick="switchPage('p2p',this)"><span class="nav-icon">💰</span> P2P Trading</button>
+  <div class="nav-section-label">Insights</div>
+  <button class="nav-btn" onclick="switchPage('analytics',this)"><span class="nav-icon">📊</span> Analytics</button>
+  <button class="nav-btn" onclick="switchPage('calculator',this)"><span class="nav-icon">🧮</span> Calculator</button>
+  <div style="flex:1"></div>
+  <div style="border-top:1px solid var(--border);padding-top:6px;margin-top:4px">
+    <button class="nav-btn" onclick="switchPage('settings',this)"><span class="nav-icon">⚙️</span> Settings</button>
+  </div>
+  <div class="today-info" style="margin-top:6px">
+    <strong id="sideDate">Loading...</strong>
+    <span id="sideGreet"></span>
+  </div>
+</aside>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="bnav-btn active" onclick="switchPage('habits',this,true)"><span class="bicon">✅</span>Habits</button>
+  <button class="bnav-btn" onclick="switchPage('weekly',this,true)"><span class="bicon">📅</span>Tasks</button>
+  <button class="bnav-btn" onclick="switchPage('fbads',this,true)"><span class="bicon">🎯</span>FB Ads</button>
+  <button class="bnav-btn" onclick="switchPage('p2p',this,true)"><span class="bicon">💰</span>P2P</button>
+  <button class="bnav-btn" onclick="switchPage('analytics',this,true)"><span class="bicon">📊</span>Stats</button>
+  <button class="bnav-btn" onclick="switchPage('calculator',this,true)"><span class="bicon">🧮</span>Calc</button>
+  <button class="bnav-btn" onclick="switchPage('settings',this,true)"><span class="bicon">⚙️</span>Settings</button>
+</nav>
+
+<main class="main">
+
+<!-- HABITS -->
+<div id="page-habits" class="page active">
+  <div class="page-header"><div>
+    <div class="page-title">Habit Tracker</div>
+    <div class="page-sub">Daily habits — tick করো, streak বাড়াও</div>
+  </div></div>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Today's progress</div><div class="metric-value purple" id="h-pct">0%</div></div>
+    <div class="metric"><div class="metric-label">Done today</div><div class="metric-value green" id="h-done">0</div></div>
+    <div class="metric"><div class="metric-label">Total habits</div><div class="metric-value" id="h-total">0</div></div>
+    <div class="metric"><div class="metric-label">Best streak</div><div class="metric-value amber" id="h-best">0</div></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="card-title" style="margin-bottom:.5rem">Today's checklist</div>
+      <button class="btn-sm" onclick="resetDay()">Reset day</button>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="h-bar" style="width:0%"></div></div>
+      <div class="progress-label" id="h-bar-label">0 of 0 completed</div>
+    </div>
+    <div id="habitList"></div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div class="card-title">New habit add করো</div>
+      <div class="form-grid two">
+        <div class="field"><label>Habit name</label><input type="text" id="newHabit" placeholder="e.g. ৮ ঘণ্টা ঘুম"></div>
+        <div class="field"><label>Reminder time</label><input type="time" id="newHabitTime"></div>
+      </div>
+      <div class="form-grid two">
+        <div class="field"><label>Duration (minutes)</label><input type="number" id="newHabitDur" placeholder="e.g. 30" min="1"></div>
+        <div class="field" style="justify-content:flex-end;padding-top:18px"><button class="btn btn-primary" style="width:100%" onclick="addHabit()">Add habit</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WEEKLY -->
+<div id="page-weekly" class="page">
+  <div class="page-header"><div>
+    <div class="page-title">Weekly Planner</div>
+    <div class="page-sub">Tasks — day অনুযায়ী সাজানো</div>
+  </div></div>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Total</div><div class="metric-value" id="t-total">0</div></div>
+    <div class="metric"><div class="metric-label">Done</div><div class="metric-value green" id="t-done">0</div></div>
+    <div class="metric"><div class="metric-label">In progress</div><div class="metric-value amber" id="t-prog">0</div></div>
+    <div class="metric"><div class="metric-label">Overdue</div><div class="metric-value red" id="t-overdue">0</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Categories manage করো</div>
+    <div class="cat-tags" id="catTagList"></div>
+    <div class="cat-add-row">
+      <input type="text" id="newCatInput" placeholder="নতুন category...">
+      <button class="btn btn-primary" onclick="addCategory()">Add</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">New task add করো</div>
+    <div class="form-grid two">
+      <div class="field"><label>Task name</label><input type="text" id="tName" placeholder="Task name"></div>
+      <div class="field"><label>Category</label><select id="tCat"></select></div>
+    </div>
+    <div class="form-grid three">
+      <div class="field"><label>Priority</label><select id="tPri">
+        <option value="High">🔴 High</option><option value="Medium">🟡 Medium</option><option value="Low">🟢 Low</option>
+      </select></div>
+      <div class="field"><label>Due date</label><input type="date" id="tDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="tTime"></div>
+    </div>
+    <button class="btn btn-primary" onclick="addTask()">Add task</button>
+  </div>
+  <div id="todaySection" class="day-group">
+    <div class="day-group-header">
+      <div class="day-group-label" id="todayLabel">Today</div>
+      <span class="day-group-today">Today</span>
+      <div class="day-group-line"></div>
+    </div>
+    <div id="todayTasks"></div>
+  </div>
+  <div id="otherDays"></div>
+</div>
+
+<!-- FB ADS -->
+<div id="page-fbads" class="page">
+  <div class="page-header"><div>
+    <div class="page-title">Facebook Ads Tracker</div>
+    <div class="page-sub">Campaign performance — CPR auto calculate</div>
+  </div></div>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Active</div><div class="metric-value purple" id="c-active">0</div></div>
+    <div class="metric"><div class="metric-label">Total spend</div><div class="metric-value" id="c-spend">৳0</div></div>
+    <div class="metric"><div class="metric-label">Results</div><div class="metric-value green" id="c-results">0</div></div>
+    <div class="metric"><div class="metric-label">Avg CPR</div><div class="metric-value amber" id="c-cpr">৳0</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">New campaign</div>
+    <div class="form-grid two">
+      <div class="field"><label>Campaign name</label><input type="text" id="cName" placeholder="Campaign name"></div>
+      <div class="field"><label>Brand</label><input type="text" id="cBrand" placeholder="e.g. Certain Men"></div>
+    </div>
+    <div class="form-grid three">
+      <div class="field"><label>Objective</label><select id="cObj">
+        <option>Messaging</option><option>Traffic</option><option>Awareness</option><option>Conversions</option>
+      </select></div>
+      <div class="field"><label>Budget (BDT)</label><input type="number" id="cBudget" placeholder="0"></div>
+      <div class="field"><label>Results</label><input type="number" id="cResults" placeholder="0"></div>
+    </div>
+    <div class="form-grid two">
+      <div class="field"><label>Status</label><select id="cStatus">
+        <option value="Active">Active</option><option value="Paused">Paused</option><option value="Draft">Draft</option><option value="Done">Done</option>
+      </select></div>
+      <div class="field"><label>Start date</label><input type="date" id="cDate"></div>
+    </div>
+    <button class="btn btn-primary" onclick="addCampaign()">Add campaign</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Campaign</th><th>Brand</th><th>Budget</th><th>Results</th><th>CPR</th><th>Status</th><th></th></tr></thead>
+      <tbody id="campBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- P2P -->
+<div id="page-p2p" class="page">
+  <div class="page-header"><div>
+    <div class="page-title">P2P Tracker</div>
+    <div class="page-sub">Mamun_P2P — trades ও profit track</div>
+  </div></div>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Total trades</div><div class="metric-value" id="p-total">0</div></div>
+    <div class="metric"><div class="metric-label">Completion</div><div class="metric-value green" id="p-rate">0%</div></div>
+    <div class="metric"><div class="metric-label">Profit</div><div class="metric-value green" id="p-profit">৳0</div></div>
+    <div class="metric"><div class="metric-label">Current balance</div><div class="metric-value purple" id="p-vol">0</div></div>
+  </div>
+  <div class="metric-grid" style="margin-bottom:.75rem">
+    <div class="metric"><div class="metric-label">Current USDT balance</div><div class="metric-value purple" id="p-usdt-total">0.00 USDT</div></div>
+    <div class="metric"><div class="metric-label">Total received (Sell)</div><div class="metric-value green" id="p-bdt-sell">৳0</div></div>
+    <div class="metric"><div class="metric-label">Net Profit / Loss</div><div class="metric-value" id="p-net-profit">৳0</div></div>
+  </div>
+
+  <!-- INVESTMENT TRACKER -->
+  <div class="card" style="margin-bottom:1rem;border:1.5px solid var(--purple-light)">
+    <div class="card-title">💰 Investment Tracker</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="field">
+        <label>Initial investment (৳) — তোমার মূল টাকা</label>
+        <input type="number" id="p-init-invest" placeholder="e.g. 5000" oninput="updateInvestCalc();saveInvestSettings()" style="font-size:15px;font-weight:600">
+      </div>
+      <div class="field">
+        <label>Current USDT rate (৳) — এখন কত rate চলছে</label>
+        <input type="number" id="p-cur-rate" placeholder="e.g. 130.00" step="0.01" oninput="updateInvestCalc();saveInvestSettings()" style="font-size:15px;font-weight:600">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+      <div class="metric" style="border-color:var(--border)">
+        <div class="metric-label">Total Buy</div>
+        <div class="metric-value" id="p-total-buy" style="font-size:18px">৳0</div>
+        <div class="metric-sub" id="p-total-buy-usdt" style="font-size:11px;color:var(--text3)">0 USDT</div>
+      </div>
+      <div class="metric" style="border-color:var(--border)">
+        <div class="metric-label">Total Sell</div>
+        <div class="metric-value green" id="p-total-sell" style="font-size:18px">৳0</div>
+        <div class="metric-sub" id="p-total-sell-usdt" style="font-size:11px;color:var(--text3)">0 USDT</div>
+      </div>
+      <div class="metric" style="border-color:var(--border)">
+        <div class="metric-label">Remaining USDT value</div>
+        <div class="metric-value purple" id="p-cur-value" style="font-size:18px">৳0</div>
+        <div class="metric-sub" id="p-cur-value-usdt" style="font-size:11px;color:var(--text3)">0 USDT</div>
+      </div>
+      <div class="metric" style="border-color:var(--purple-light);background:var(--purple-light)">
+        <div class="metric-label">Net Profit / Loss</div>
+        <div class="metric-value" id="p-invest-profit" style="font-size:22px">৳0</div>
+        <div class="metric-sub" id="p-invest-pct" style="font-size:12px;font-weight:600">0%</div>
+      </div>
+    </div>
+    <div id="p-invest-formula" style="margin-top:10px;font-size:12px;color:var(--text3);background:var(--surface2);padding:8px 12px;border-radius:var(--radius-sm);line-height:1.8"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">New trade</div>
+    <div class="form-grid four">
+      <div class="field"><label>Date</label><input type="date" id="pDate"></div>
+      <div class="field"><label>Type</label><select id="pType"><option value="Buy">Buy</option><option value="Sell">Sell</option></select></div>
+      <div class="field"><label>Amount (USDT)</label><input type="number" id="pAmt" placeholder="0.00" step="0.01" oninput="calcRate()"></div>
+      <div class="field"><label>Total BDT (কত টাকা)</label><input type="number" id="pTotalBDT" placeholder="e.g. 500" step="1" oninput="calcRate()"></div>
+    </div>
+    <div class="form-grid three">
+      <div class="field">
+        <label>Rate (auto calculated)</label>
+        <div style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text2);min-height:36px" id="pRateDisplay">—</div>
+        <input type="hidden" id="pRate">
+      </div>
+      <div class="field"><label>Profit (BDT)</label><input type="number" id="pProfit" placeholder="0"></div>
+      <div class="field"><label>Status</label><select id="pComplete"><option value="1">✅ Completed</option><option value="0">❌ Cancelled</option></select></div>
+    </div>
+    <button class="btn btn-primary" onclick="addTrade()">Add trade</button>
+  </div>
+  <!-- DAILY SUMMARY -->
+  <div id="tradeDailySummary"></div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="page-analytics" class="page">
+  <div class="page-header">
+    <div><div class="page-title">Analytics</div><div class="page-sub">Habits ও Tasks insights</div></div>
+    <div class="range-tabs">
+      <button class="range-tab active" onclick="setRange('week',this)">Week</button>
+      <button class="range-tab" onclick="setRange('month',this)">Month</button>
+      <button class="range-tab" onclick="setRange('year',this)">Year</button>
+    </div>
+  </div>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Habit completion</div><div class="metric-value purple" id="a-hcomp">—</div><div class="metric-sub" id="a-hcomp-sub"></div></div>
+    <div class="metric"><div class="metric-label">Best streak</div><div class="metric-value amber" id="a-streak">—</div></div>
+    <div class="metric"><div class="metric-label">Tasks done</div><div class="metric-value green" id="a-tdone">—</div></div>
+    <div class="metric"><div class="metric-label">Overdue</div><div class="metric-value red" id="a-overdue">—</div></div>
+  </div>
+  <div class="card-row">
+    <div class="card"><div class="card-title">Habit completion rate</div><div class="chart-wrap"><canvas id="habitLineChart"></canvas></div></div>
+    <div class="card"><div class="card-title">Best vs worst days</div><div id="bestWorstList"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Streak history</div>
+    <div class="table-wrap"><table><thead><tr><th>Habit</th><th>Streak</th><th>Time</th><th>Duration</th><th>Status</th></tr></thead><tbody id="streakTable"></tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Activity heatmap (last 28 days)</div>
+    <div class="heatmap-labels"><div class="heatmap-day">Sun</div><div class="heatmap-day">Mon</div><div class="heatmap-day">Tue</div><div class="heatmap-day">Wed</div><div class="heatmap-day">Thu</div><div class="heatmap-day">Fri</div><div class="heatmap-day">Sat</div></div>
+    <div class="heatmap" id="heatmapGrid"></div>
+  </div>
+  <div class="card-row">
+    <div class="card"><div class="card-title">Task completion</div><div class="chart-wrap"><canvas id="taskDoughnut"></canvas></div></div>
+    <div class="card"><div class="card-title">Category breakdown</div><div id="catBreakdown"></div></div>
+  </div>
+  <div class="card"><div class="card-title">⚠️ Overdue tasks</div><div id="overdueList"></div></div>
+</div>
+
+<!-- SETTINGS -->
+
+<!-- CALCULATOR PAGE -->
+<div id="page-calculator" class="page">
+  <div class="page-header"><div>
+    <div class="page-title">bKash P2P Calculator</div>
+    <div class="page-sub">Order amount দাও — charge, USDT, rate সব auto calculate হবে</div>
+  </div></div>
+
+  <div class="card-row">
+    <div class="card" style="flex:1">
+      <div class="card-title">Sell Calculator</div>
+
+      <!-- STEP 1: Order amount -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--purple);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Order amount (৳) — customer কত টাকার order দিয়েছে</label>
+          <input type="number" id="calcOrder" placeholder="e.g. 1000" oninput="runCalc()" style="font-size:18px;font-weight:500">
+        </div>
+      </div>
+
+      <!-- bKash charge (hidden label, auto) -->
+      <div style="margin:8px 0 8px 30px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;color:var(--text3)">bKash charge
+          <input type="number" id="calcCharge" value="1.85" step="0.01" oninput="runCalc()" style="width:60px;padding:3px 6px;font-size:12px;margin-left:6px;display:inline-block">%
+        </div>
+        <div id="calcChargeAmt" style="font-size:13px;font-weight:600;color:var(--red)">—</div>
+      </div>
+      <div style="margin:0 0 12px 30px;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm)">
+        <div style="font-size:12px;color:var(--text2)">Customer মোট দেবে</div>
+        <div id="calcCustomerPays" style="font-size:15px;font-weight:600;color:var(--text)">—</div>
+      </div>
+
+      <!-- STEP 2: Total USDT -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--purple);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Total USDT — কত USDT sell করবে</label>
+          <input type="number" id="calcUSDTInput" placeholder="e.g. 7.90" oninput="runCalc()" step="0.0001" style="font-size:18px;font-weight:500">
+        </div>
+      </div>
+
+      <!-- RESULT: Rate -->
+      <div id="calcResults" style="display:none">
+        <div style="border-top:2px solid var(--purple);padding-top:1rem">
+          <!-- Rate result - big display -->
+          <div style="text-align:center;padding:1rem;background:var(--purple-light);border-radius:var(--radius-sm);margin-bottom:12px">
+            <div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:4px">📊 RATE হবে</div>
+            <div id="calcRateResult" style="font-size:32px;font-weight:700;color:var(--purple);font-family:'DM Mono',monospace">৳0.00</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">per USDT</div>
+          </div>
+
+          <!-- Summary -->
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:.875rem;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📋 Order Summary</div>
+            <div id="calcSummary" style="font-size:13px;color:var(--text2);line-height:2.2"></div>
+          </div>
+
+          <button class="btn btn-primary" style="width:100%" onclick="useInTrade()">➕ P2P Tracker-এ add করো</button>
+        </div>
+      </div>
+      <div id="calcEmpty" style="padding:1.5rem;text-align:center;color:var(--text3);font-size:13px">উপরে order amount আর USDT দাও...</div>
+    </div>
+
+    <div class="card" style="flex:1">
+      <div class="card-title">bKash Charge Reference</div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Rate (৳/USDT)</label>
+        <input type="number" id="refRate" placeholder="e.g. 128.50" step="0.01" oninput="renderRefTable()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Order (৳)</th><th>Charge</th><th>Customer pays</th><th>USDT</th></tr></thead>
+          <tbody id="refTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-settings" class="page">
+  <div class="page-header"><div>
+    <div class="page-title">Settings</div>
+    <div class="page-sub">Firebase sync — সব device-এ same data</div>
+  </div></div>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Sync status</div><div class="metric-value purple" id="s-sync" style="font-size:14px">—</div></div>
+    <div class="metric"><div class="metric-label">Habits</div><div class="metric-value" id="s-habits">0</div></div>
+    <div class="metric"><div class="metric-label">Tasks</div><div class="metric-value" id="s-tasks">0</div></div>
+    <div class="metric"><div class="metric-label">Trades</div><div class="metric-value" id="s-trades">0</div></div>
+  </div>
+  <div class="card" style="border-color:var(--green)">
+    <div class="card-title" style="color:var(--green)">✅ Firebase Sync Active</div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.7">
+      তোমার সব data Firebase-এ real-time sync হচ্ছে।<br>
+      Computer আর Mobile — যেকোনো device-এ same data দেখবে।<br>
+      Internet থাকলে automatically sync হবে।
+    </p>
+  </div>
+  <div class="card">
+    <div class="card-title">📱 Mobile-এ কিভাবে use করবে</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.9">
+      <div>1️⃣ এই HTML file টা Google Drive-এ upload করো</div>
+      <div>2️⃣ Phone-এ Chrome দিয়ে open করো</div>
+      <div>3️⃣ Chrome-এর menu → <strong>"Add to Home Screen"</strong> click করো</div>
+      <div>4️⃣ Home screen-এ app-এর মতো দেখাবে!</div>
+      <div style="margin-top:8px;color:var(--purple);font-weight:500">✨ Data automatically sync হবে — computer-এ add করলে mobile-এও দেখাবে!</div>
+    </div>
+  </div>
+  <div class="card" style="border-color:var(--red)">
+    <div class="card-title" style="color:var(--red)">⚠️ Danger Zone</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">সব data permanently delete হবে — undo করা যাবে না।</p>
+    <button class="btn" style="background:var(--red);color:#fff" onclick="clearAllData()">🗑️ সব data delete করো</button>
+  </div>
+</div>
+
+
+<!-- OPENING BALANCE MODAL -->
+<div class="modal-overlay" id="openingBalModal">
+  <div class="modal">
+    <div class="modal-title">💰 Opening Balance</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">Trades শুরু করার আগে তোমার কাছে কত USDT ছিল সেটা দাও। এটা Total USDT-এ যোগ হবে।</p>
+    <div class="field" style="margin-bottom:1rem">
+      <label>Opening USDT balance</label>
+      <input type="number" id="openingBalInput" placeholder="e.g. 3.00" step="0.01" min="0">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('openingBalModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOpeningBalance()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT TRADE MODAL -->
+<div class="modal-overlay" id="editTradeModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Trade edit করো</div>
+    <input type="hidden" id="editTradeId">
+    <div class="form-grid two" style="margin-bottom:8px">
+      <div class="field"><label>Date</label><input type="date" id="editTradeDate"></div>
+      <div class="field"><label>Type</label><select id="editTradeType"><option value="Buy">Buy</option><option value="Sell">Sell</option></select></div>
+    </div>
+    <div class="form-grid two" style="margin-bottom:8px">
+      <div class="field"><label>Amount (USDT)</label><input type="number" id="editTradeAmt" step="0.0001"></div>
+      <div class="field"><label>Total BDT</label><input type="number" id="editTradeBDT" step="1"></div>
+    </div>
+    <div class="form-grid two" style="margin-bottom:8px">
+      <div class="field"><label>Profit (BDT)</label><input type="number" id="editTradeProfit"></div>
+      <div class="field"><label>Status</label><select id="editTradeComplete"><option value="1">✅ Completed</option><option value="0">❌ Cancelled</option></select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('editTradeModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditTrade()">Save</button>
+    </div>
+  </div>
+</div>
+</main>
+</div>
+
+<!-- EDIT HABIT MODAL -->
+<div class="modal-overlay" id="editHabitModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Habit edit করো</div>
+    <input type="hidden" id="editHabitId">
+    <div class="form-grid two">
+      <div class="field"><label>Habit name</label><input type="text" id="editHabitName"></div>
+      <div class="field"><label>Reminder time</label><input type="time" id="editHabitTime"></div>
+    </div>
+    <div class="form-grid two">
+      <div class="field"><label>Duration (minutes)</label><input type="number" id="editHabitDur" min="1"></div>
+      <div class="field"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('editHabitModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditHabit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT TASK MODAL -->
+<div class="modal-overlay" id="editTaskModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Task edit করো</div>
+    <input type="hidden" id="editTaskId">
+    <div class="form-grid two">
+      <div class="field"><label>Task name</label><input type="text" id="editTaskName"></div>
+      <div class="field"><label>Category</label><select id="editTaskCat"></select></div>
+    </div>
+    <div class="form-grid three">
+      <div class="field"><label>Priority</label><select id="editTaskPri">
+        <option value="High">🔴 High</option><option value="Medium">🟡 Medium</option><option value="Low">🟢 Low</option>
+      </select></div>
+      <div class="field"><label>Due date</label><input type="date" id="editTaskDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="editTaskTime"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('editTaskModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditTask()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, deleteDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDwWoDO40RmysEI8A5c_hdAwIvh7qQn0NI",
+  authDomain: "my-dashboard-b4c4c.firebaseapp.com",
+  projectId: "my-dashboard-b4c4c",
+  storageBucket: "my-dashboard-b4c4c.firebasestorage.app",
+  messagingSenderId: "441258052276",
+  appId: "1:441258052276:web:041d27462506b4159a65e1",
+  measurementId: "G-W9FM52L7VP"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const USER_ID = 'mamun_dashboard';
+
+// ── STATE ──────────────────────────────────────────────
+window.S = {
+  habits: [], categories: ['FB Ads','P2P','Personal','Client Work','Meeting','Learning','Other'],
+  tasks: [], campaigns: [], trades: [], nid: 200
+};
+const todayKey = new Date().toISOString().split('T')[0];
+// Set trade date default to today when DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const pd = document.getElementById('pDate');
+  if(pd) pd.value = todayKey;
+});
+
+// ── SYNC STATUS ──────────────────────────────────────
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  const sStat = document.getElementById('s-sync');
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = text;
+  if(sStat) sStat.textContent = text;
+}
+
+// ── FIRESTORE HELPERS ──────────────────────────────────
+async function fsSet(path, data) {
+  try {
+    await setDoc(doc(db, path), data);
+    setSyncStatus('green', 'Synced ✓');
+  } catch(e) { setSyncStatus('red', 'Sync error'); console.error(e); }
+}
+async function fsAdd(col, data) {
+  try {
+    const ref = await addDoc(collection(db, USER_ID, 'data', col), data);
+    setSyncStatus('green', 'Synced ✓');
+    return ref.id;
+  } catch(e) { setSyncStatus('red', 'Sync error'); console.error(e); return null; }
+}
+async function fsDel(col, id) {
+  try {
+    await deleteDoc(doc(db, USER_ID, 'data', col, id));
+    setSyncStatus('green', 'Synced ✓');
+  } catch(e) { setSyncStatus('red', 'Sync error'); }
+}
+async function fsUpdate(col, id, data) {
+  try {
+    await updateDoc(doc(db, USER_ID, 'data', col, id), data);
+    setSyncStatus('green', 'Synced ✓');
+  } catch(e) { setSyncStatus('red', 'Sync error'); }
+}
+
+// ── LOAD & LISTEN ──────────────────────────────────────
+async function initData() {
+  document.getElementById('loadingText').textContent = 'Data load হচ্ছে...';
+  setSyncStatus('amber', 'Loading...');
+
+  // listen to config (categories, nid)
+  onSnapshot(doc(db, USER_ID, 'config'), snap => {
+    if(snap.exists()) {
+      const d = snap.data();
+      if(d.categories) window.S.categories = d.categories;
+      if(d.nid) window.S.nid = d.nid;
+      if(d.openingBalance !== undefined) window.S.openingBalance = d.openingBalance;
+      // Load saved invest settings
+      if(d.initInvest) {
+        const el = document.getElementById('p-init-invest');
+        if(el && !el.value) el.value = d.initInvest;
+      }
+      if(d.curRate) {
+        const el = document.getElementById('p-cur-rate');
+        if(el && !el.value) el.value = d.curRate;
+      }
+    }
+    renderCategories();
+    renderTrades();
+  });
+
+  // listen habits
+  onSnapshot(collection(db, USER_ID, 'data', 'habits'), snap => {
+    window.S.habits = snap.docs.map(d => ({...d.data(), _id: d.id}));
+    renderHabits();
+    renderSettings();
+  });
+
+  // listen tasks
+  onSnapshot(collection(db, USER_ID, 'data', 'tasks'), snap => {
+    window.S.tasks = snap.docs.map(d => ({...d.data(), _id: d.id}));
+    renderTasks();
+    renderSettings();
+  });
+
+  // listen campaigns
+  onSnapshot(collection(db, USER_ID, 'data', 'campaigns'), snap => {
+    window.S.campaigns = snap.docs.map(d => ({...d.data(), _id: d.id}));
+    renderCampaigns();
+  });
+
+  // listen trades
+  onSnapshot(collection(db, USER_ID, 'data', 'trades'), snap => {
+    window.S.trades = snap.docs.map(d => ({...d.data(), _id: d.id}));
+    renderTrades();
+    renderSettings();
+  });
+
+  setSyncStatus('green', 'Synced ✓');
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// ── NAVIGATION ──────────────────────────────────────
+window.switchPage = function(id, btn, fromBottom) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  const idx = {habits:0,weekly:1,fbads:2,p2p:3,analytics:4,settings:5}[id];
+  if(fromBottom) { document.querySelectorAll('.nav-btn')[idx]?.classList.add('active'); }
+  else { document.querySelectorAll('.bnav-btn')[idx]?.classList.add('active'); }
+  if(id === 'analytics') renderAnalytics();
+  if(id === 'settings') renderSettings();
+  window.scrollTo(0,0);
+};
+
+// ── DATE ──────────────────────────────────────────────
+(function(){
+  const d = new Date();
+  document.getElementById('sideDate').textContent = d.toLocaleDateString('en-BD',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const h = d.getHours();
+  document.getElementById('sideGreet').textContent = h<12?'Good morning! 🌅':h<17?'Good afternoon! ☀️':'Good evening! 🌙';
+})();
+
+function fmtTime(t){ if(!t)return ''; const[hh,mm]=t.split(':');const h=parseInt(hh),ap=h>=12?'PM':'AM';return(h%12||12)+':'+mm+' '+ap; }
+const DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// ── HABITS ──────────────────────────────────────────
+window.renderHabits = function() {
+  const done = window.S.habits.filter(h => h.lastDone === todayKey).length;
+  const total = window.S.habits.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const best = window.S.habits.reduce((m,h) => Math.max(m,h.streak||0), 0);
+  document.getElementById('h-pct').textContent = pct+'%';
+  document.getElementById('h-done').textContent = done;
+  document.getElementById('h-total').textContent = total;
+  document.getElementById('h-best').textContent = best+' 🔥';
+  document.getElementById('h-bar').style.width = pct+'%';
+  document.getElementById('h-bar-label').textContent = done+' of '+total+' completed';
+  const sorted = [...window.S.habits].sort((a,b) => {
+    if(!a.time&&!b.time)return 0; if(!a.time)return 1; if(!b.time)return -1;
+    return a.time.localeCompare(b.time);
+  });
+  document.getElementById('habitList').innerHTML = sorted.length
+    ? sorted.map(h => {
+        const isDone = h.lastDone === todayKey;
+        const tp = h.time ? `<span>🕐 ${fmtTime(h.time)}</span>` : '';
+        const dp = h.duration ? `<span>⏱ ${h.duration} min</span>` : '';
+        return `<div class="habit-item">
+          <div class="habit-left">
+            <button class="check-btn ${isDone?'done':''}" onclick="toggleHabit('${h._id}')">${isDone?'✓':''}</button>
+            <div class="habit-meta">
+              <span class="habit-name ${isDone?'done':''}">${h.name}</span>
+              ${(tp||dp)?`<div class="habit-time-info">${tp}${dp}</div>`:''}
+            </div>
+            ${(h.streak||0)>0?`<span class="streak">${h.streak}🔥</span>`:''}
+          </div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-edit" onclick="openEditHabit('${h._id}')">✏️</button>
+            <button class="btn-del" onclick="delHabit('${h._id}')">✕</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="empty">কোনো habit নেই।</div>';
+};
+
+window.toggleHabit = async function(id) {
+  const h = window.S.habits.find(x => x._id === id); if(!h)return;
+  const history = h.history || {};
+  if(h.lastDone === todayKey) {
+    history[todayKey] = 0;
+    await fsUpdate('habits', id, {lastDone:'', streak: Math.max(0,(h.streak||0)-1), history});
+  } else {
+    history[todayKey] = 1;
+    await fsUpdate('habits', id, {lastDone:todayKey, streak:(h.streak||0)+1, history});
+  }
+};
+
+window.addHabit = async function() {
+  const v = document.getElementById('newHabit').value.trim(); if(!v)return;
+  setSyncStatus('amber','Saving...');
+  await fsAdd('habits', {name:v, streak:0, lastDone:'', time:document.getElementById('newHabitTime').value, duration:parseInt(document.getElementById('newHabitDur').value)||0, history:{}, createdAt:todayKey});
+  document.getElementById('newHabit').value=''; document.getElementById('newHabitTime').value=''; document.getElementById('newHabitDur').value='';
+};
+
+window.delHabit = async function(id) {
+  if(!confirm('এই habit delete করবে?'))return;
+  await fsDel('habits', id);
+};
+
+window.resetDay = async function() {
+  const todayHabits = window.S.habits.filter(h => h.lastDone === todayKey);
+  for(const h of todayHabits) {
+    const history = h.history || {}; history[todayKey] = 0;
+    await fsUpdate('habits', h._id, {lastDone:'', streak:Math.max(0,(h.streak||0)-1), history});
+  }
+};
+
+window.openEditHabit = function(id) {
+  const h = window.S.habits.find(x => x._id === id); if(!h)return;
+  document.getElementById('editHabitId').value = id;
+  document.getElementById('editHabitName').value = h.name;
+  document.getElementById('editHabitTime').value = h.time||'';
+  document.getElementById('editHabitDur').value = h.duration||'';
+  document.getElementById('editHabitModal').classList.add('open');
+};
+
+window.saveEditHabit = async function() {
+  const id = document.getElementById('editHabitId').value;
+  const name = document.getElementById('editHabitName').value.trim(); if(!name)return;
+  await fsUpdate('habits', id, {name, time:document.getElementById('editHabitTime').value, duration:parseInt(document.getElementById('editHabitDur').value)||0});
+  closeModal('editHabitModal');
+};
+
+// ── CATEGORIES ──────────────────────────────────────
+window.renderCategories = function() {
+  document.getElementById('catTagList').innerHTML = window.S.categories.map((c,i) =>
+    `<span class="cat-tag">${c}<button onclick="delCategory(${i})">✕</button></span>`).join('');
+  ['tCat','editTaskCat'].forEach(id => {
+    const sel = document.getElementById(id); if(!sel)return;
+    const cur = sel.value;
+    sel.innerHTML = window.S.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(window.S.categories.includes(cur)) sel.value = cur;
+  });
+};
+
+window.addCategory = async function() {
+  const v = document.getElementById('newCatInput').value.trim();
+  if(!v||window.S.categories.includes(v))return;
+  window.S.categories.push(v);
+  document.getElementById('newCatInput').value='';
+  await fsSet(USER_ID+'/config', {categories:window.S.categories, nid:window.S.nid});
+  renderCategories();
+};
+
+window.delCategory = async function(i) {
+  if(window.S.categories.length<=1){alert('কমপক্ষে একটা category রাখতে হবে।');return;}
+  window.S.categories.splice(i,1);
+  await fsSet(USER_ID+'/config', {categories:window.S.categories, nid:window.S.nid});
+  renderCategories(); renderTasks();
+};
+
+// ── TASKS ──────────────────────────────────────────
+function isOverdue(t){return t.date&&t.date<todayKey&&t.status!=='Done';}
+
+function taskCardHTML(x) {
+  const priColor = {High:'badge-red',Medium:'badge-amber',Low:'badge-green'};
+  const over = isOverdue(x); const done = x.status==='Done';
+  return `<div class="task-card ${over?'overdue':''} ${done?'done-card':''}">
+    <div class="task-card-left">
+      <div class="task-card-name ${done?'striked':''}">${x.name}${over?' <span style="font-size:10px;color:var(--red)">overdue</span>':''}</div>
+      <div class="task-card-meta">
+        <span class="badge badge-purple">${x.cat}</span>
+        <span class="badge ${priColor[x.priority]||'badge-blue'}">${x.priority}</span>
+        ${x.time?`<span class="task-time-badge">🕐 ${fmtTime(x.time)}</span>`:''}
+      </div>
+    </div>
+    <div class="task-card-right">
+      <select class="status-select" onchange="updateTaskStatus('${x._id}',this.value)">
+        <option ${x.status==='Not Started'?'selected':''}>Not Started</option>
+        <option ${x.status==='In Progress'?'selected':''}>In Progress</option>
+        <option ${x.status==='Done'?'selected':''}>Done</option>
+      </select>
+      <button class="btn-edit" onclick="openEditTask('${x._id}')">✏️</button>
+      <button class="btn-del" onclick="delTask('${x._id}')">✕</button>
+    </div>
+  </div>`;
+}
+
+window.renderTasks = function() {
+  const t = window.S.tasks;
+  document.getElementById('t-total').textContent = t.length;
+  document.getElementById('t-done').textContent = t.filter(x=>x.status==='Done').length;
+  document.getElementById('t-prog').textContent = t.filter(x=>x.status==='In Progress').length;
+  document.getElementById('t-overdue').textContent = t.filter(isOverdue).length;
+  const sorted = [...t].sort((a,b) => {
+    if(a.status==='Done'&&b.status!=='Done')return 1;
+    if(a.status!=='Done'&&b.status==='Done')return -1;
+    return ((a.date||'9999-99-99')+'T'+(a.time||'23:59')).localeCompare((b.date||'9999-99-99')+'T'+(b.time||'23:59'));
+  });
+  const todayTasks = sorted.filter(x => x.date===todayKey || (isOverdue(x)&&x.date<todayKey));
+  const todayDayName = DAY_NAMES[new Date().getDay()];
+  document.getElementById('todayLabel').textContent = todayDayName+', '+new Date().toLocaleDateString('en-BD',{month:'short',day:'numeric'});
+  document.getElementById('todayTasks').innerHTML = todayTasks.length
+    ? todayTasks.map(taskCardHTML).join('')
+    : '<div style="padding:.75rem;font-size:13px;color:var(--text3)">আজকের কোনো task নেই ✅</div>';
+  const other = sorted.filter(x => x.date!==todayKey && !(isOverdue(x)&&x.date<todayKey));
+  const groups = {};
+  other.forEach(x => { const k=x.date||'no-date'; if(!groups[k])groups[k]=[]; groups[k].push(x); });
+  const keys = Object.keys(groups).sort((a,b) => { if(a==='no-date')return 1; if(b==='no-date')return -1; return a.localeCompare(b); });
+  document.getElementById('otherDays').innerHTML = keys.map(k => {
+    let label='';
+    if(k==='no-date'){label='No date';}
+    else{const d=new Date(k+'T00:00:00');label=DAY_NAMES[d.getDay()]+' · '+d.toLocaleDateString('en-BD',{month:'short',day:'numeric'});}
+    return `<div class="day-group"><div class="day-group-header"><div class="day-group-label">${label}</div><div class="day-group-line"></div></div>${groups[k].map(taskCardHTML).join('')}</div>`;
+  }).join('');
+};
+
+window.addTask = async function() {
+  const n = document.getElementById('tName').value.trim(); if(!n)return;
+  setSyncStatus('amber','Saving...');
+  await fsAdd('tasks', {name:n, cat:document.getElementById('tCat').value, priority:document.getElementById('tPri').value, date:document.getElementById('tDate').value, time:document.getElementById('tTime').value, status:'Not Started', createdAt:todayKey});
+  document.getElementById('tName').value='';
+};
+
+window.updateTaskStatus = async function(id, v) {
+  const data = {status:v}; if(v==='Done') data.doneAt = todayKey;
+  await fsUpdate('tasks', id, data);
+};
+
+window.delTask = async function(id) { await fsDel('tasks', id); };
+
+window.openEditTask = function(id) {
+  const t = window.S.tasks.find(x => x._id===id); if(!t)return;
+  document.getElementById('editTaskId').value = id;
+  document.getElementById('editTaskName').value = t.name;
+  document.getElementById('editTaskDate').value = t.date||'';
+  document.getElementById('editTaskTime').value = t.time||'';
+  renderCategories();
+  document.getElementById('editTaskCat').value = t.cat;
+  document.getElementById('editTaskPri').value = t.priority;
+  document.getElementById('editTaskModal').classList.add('open');
+};
+
+window.saveEditTask = async function() {
+  const id = document.getElementById('editTaskId').value;
+  const name = document.getElementById('editTaskName').value.trim(); if(!name)return;
+  await fsUpdate('tasks', id, {name, cat:document.getElementById('editTaskCat').value, priority:document.getElementById('editTaskPri').value, date:document.getElementById('editTaskDate').value, time:document.getElementById('editTaskTime').value});
+  closeModal('editTaskModal');
+};
+
+// ── CAMPAIGNS ──────────────────────────────────────
+window.renderCampaigns = function() {
+  const c = window.S.campaigns;
+  const spend = c.reduce((s,x)=>s+(parseFloat(x.budget)||0),0);
+  const results = c.reduce((s,x)=>s+(parseInt(x.results)||0),0);
+  document.getElementById('c-active').textContent = c.filter(x=>x.status==='Active').length;
+  document.getElementById('c-spend').textContent = '৳'+spend.toLocaleString();
+  document.getElementById('c-results').textContent = results;
+  document.getElementById('c-cpr').textContent = results?'৳'+Math.round(spend/results):'—';
+  const stColor = {Active:'badge-green',Paused:'badge-amber',Draft:'badge-blue',Done:'badge-red'};
+  document.getElementById('campBody').innerHTML = c.length
+    ? c.map(x => `<tr>
+        <td style="font-weight:500">${x.name}</td><td style="color:var(--text3)">${x.brand}</td>
+        <td>৳${parseFloat(x.budget||0).toLocaleString()}</td><td>${x.results||0}</td>
+        <td style="font-weight:600;color:var(--amber)">${x.results>0?'৳'+Math.round((parseFloat(x.budget)||0)/parseInt(x.results)):'—'}</td>
+        <td><span class="badge ${stColor[x.status]||'badge-blue'}">${x.status}</span></td>
+        <td><button class="btn-del" onclick="delCamp('${x._id}')">✕</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="7" class="empty">কোনো campaign নেই</td></tr>';
+};
+
+window.addCampaign = async function() {
+  const n = document.getElementById('cName').value.trim(); if(!n)return;
+  setSyncStatus('amber','Saving...');
+  await fsAdd('campaigns', {name:n, brand:document.getElementById('cBrand').value, obj:document.getElementById('cObj').value, budget:document.getElementById('cBudget').value, results:document.getElementById('cResults').value, status:document.getElementById('cStatus').value, date:document.getElementById('cDate').value});
+  document.getElementById('cName').value=''; document.getElementById('cBudget').value=''; document.getElementById('cResults').value='';
+};
+window.delCamp = async function(id) { await fsDel('campaigns', id); };
+
+// ── TRADES ──────────────────────────────────────────
+window.renderTrades = function() {
+  const t = window.S.trades || [];
+
+  // ── METRICS ──────────────────────────────────────
+  const isDone = x => x.complete==='1'||x.complete===1||x.complete===true;
+  const comp      = t.filter(isDone).length;
+  const profit    = t.reduce((s,x)=>s+(parseFloat(x.profit)||0),0);
+  const buyUSDT   = t.filter(x=>isDone(x)&&x.type==='Buy').reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
+  const sellUSDT  = t.filter(x=>isDone(x)&&x.type==='Sell').reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
+  const buyBDT    = t.filter(x=>isDone(x)&&x.type==='Buy').reduce((s,x)=>s+(parseFloat(x.totalBDT)||Math.round((parseFloat(x.amt)||0)*(parseFloat(x.rate)||0))),0);
+  const sellBDT   = t.filter(x=>isDone(x)&&x.type==='Sell').reduce((s,x)=>s+(parseFloat(x.totalBDT)||Math.round((parseFloat(x.amt)||0)*(parseFloat(x.rate)||0))),0);
+  const opening   = parseFloat(window.S.openingBalance||0);
+  const netVol    = opening + buyUSDT - sellUSDT;
+  const cashPnL   = sellBDT - buyBDT;
+
+  // Update DOM
+  const set = (id,val,color) => {const el=document.getElementById(id);if(el){el.textContent=val;if(color)el.style.color=color;}};
+  set('p-total', t.length);
+  set('p-rate', t.length ? Math.round(comp/t.length*100)+'%' : '0%', comp===t.length?'var(--green)':null);
+  set('p-profit', '৳'+Math.round(profit).toLocaleString(), profit>0?'var(--green)':profit<0?'var(--red)':null);
+  set('p-vol', netVol.toFixed(2)+' USDT', netVol<0?'var(--red)':'var(--purple)');
+  set('p-usdt-total', netVol.toFixed(2)+' USDT', netVol<0?'var(--red)':'var(--purple)');
+  set('p-bdt-sell', '৳'+Math.round(sellBDT).toLocaleString());
+  set('p-net-profit', (cashPnL>=0?'+':'')+'৳'+Math.round(cashPnL).toLocaleString(), cashPnL>0?'var(--green)':cashPnL<0?'var(--red)':null);
+
+  // Store for investment calc
+  window._netUSDT = netVol;
+  window._buyBDT  = buyBDT;
+  window._sellBDT = sellBDT;
+  if(window.updateInvestCalc) window.updateInvestCalc();
+
+  // ── DAILY GROUPED VIEW ────────────────────────────
+  const el = document.getElementById('tradeDailySummary');
+  if(!el) return;
+
+  if(!t.length) {
+    el.innerHTML = '<div class="empty" style="padding:2rem">কোনো trade নেই। উপরে add করো!</div>';
+    return;
+  }
+
+  const sorted = [...t].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const groups = {};
+  sorted.forEach(x => {
+    const key = x.date || 'no-date';
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(x);
+  });
+
+  const DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  el.innerHTML = Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(key => {
+    const dayTrades = groups[key];
+    const dBuy  = dayTrades.filter(x=>isDone(x)&&x.type==='Buy').reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
+    const dSell = dayTrades.filter(x=>isDone(x)&&x.type==='Sell').reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
+    const dNet  = dBuy - dSell;
+    const dBDT  = dayTrades.filter(x=>isDone(x)&&x.type==='Buy').reduce((s,x)=>s+(parseFloat(x.totalBDT)||Math.round((parseFloat(x.amt)||0)*(parseFloat(x.rate)||0))),0);
+    const dProfit = dayTrades.reduce((s,x)=>s+(parseFloat(x.profit)||0),0);
+    const label = key==='no-date' ? 'No date' :
+      (function(){ var d=new Date(key+'T00:00:00'); return DAY_NAMES[d.getDay()]+', '+d.toLocaleDateString('en-BD',{month:'short',day:'numeric'}); })();
+
+    var buySpan  = dBuy>0  ? '<span style="font-size:12px;font-weight:600;color:var(--green)">+'+dBuy.toFixed(2)+' USDT</span>' : '';
+    var sellSpan = dSell>0 ? '<span style="font-size:12px;font-weight:600;color:var(--red)">-'+dSell.toFixed(2)+' USDT</span>' : '';
+    var bdtSpan  = dBDT>0  ? '<span style="font-size:12px;color:var(--text3)">৳'+Math.round(dBDT).toLocaleString()+'</span>' : '';
+    var profitSpan = dProfit>0 ? '<span style="font-size:11px;color:var(--green);font-weight:500">+৳'+Math.round(dProfit)+'</span>' : '';
+
+    var rows = dayTrades.map(function(x,i){
+      var isBuy = x.type==='Buy';
+      var bdtVal = parseFloat(x.totalBDT)||Math.round((parseFloat(x.amt)||0)*(parseFloat(x.rate)||0));
+      var done = isDone(x);
+      var pv = parseFloat(x.profit||0);
+      return '<tr>'
+        +'<td style="color:var(--text3);font-size:12px">'+(i+1)+'</td>'
+        +'<td><span class="badge '+(isBuy?'badge-green':'badge-red')+'">'+x.type+'</span></td>'
+        +'<td style="font-weight:600;color:'+(isBuy?'var(--green)':'var(--red)')+'">'+(isBuy?'+':'-')+parseFloat(x.amt||0).toFixed(2)+'</td>'
+        +'<td style="color:var(--text3);font-size:12px">৳'+parseFloat(x.rate||0).toFixed(2)+'</td>'
+        +'<td>৳'+bdtVal.toLocaleString()+'</td>'
+        +'<td style="font-weight:600;color:'+(pv>=0?'var(--green)':'var(--red)')+'">৳'+Math.round(pv).toLocaleString()+'</td>'
+        +'<td><span class="badge '+(done?'badge-green':'badge-red')+'">'+(done?'Completed':'Cancelled')+'</span></td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn-edit" onclick="openEditTrade(''+x._id+'')" title="Edit">✏️</button>'
+          +'<button class="btn-del" onclick="delTrade(''+x._id+'')" title="Delete">✕</button>'
+        +'</td>'
+        +'</tr>';
+    }).join('');
+
+    var netColor = dNet>=0?'var(--green)':'var(--red)';
+    return '<div class="day-group">'
+      +'<div class="day-group-header">'
+        +'<div class="day-group-label">'+label+'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap">'+buySpan+sellSpan+bdtSpan+profitSpan+'</div>'
+        +'<div class="day-group-line"></div>'
+      +'</div>'
+      +'<div class="card" style="padding:0;overflow:hidden">'
+        +'<div class="table-wrap"><table>'
+          +'<thead><tr><th>#</th><th>Type</th><th>USDT</th><th>Rate</th><th>Total BDT</th><th>Profit</th><th>Status</th><th></th></tr></thead>'
+          +'<tbody>'+rows
+          +'<tr style="background:var(--surface2);font-weight:600;font-size:12px">'
+            +'<td colspan="2" style="color:var(--text2)">Day total</td>'
+            +'<td style="color:'+netColor+'">'+(dNet>=0?'+':'')+dNet.toFixed(2)+' USDT</td>'
+            +'<td>—</td>'
+            +'<td>৳'+Math.round(dBDT).toLocaleString()+'</td>'
+            +'<td style="color:var(--green)">৳'+Math.round(dProfit).toLocaleString()+'</td>'
+            +'<td colspan="2"></td>'
+          +'</tr>'
+          +'</tbody></table></div>'
+      +'</div>'
+    +'</div>';
+  }).join('')
+window.delTrade = async function(id) { await fsDel('trades', id); };
+
+
+
+// ── EDIT TRADE ──────────────────────────────────────
+window.openEditTrade = function(id) {
+  const x = window.S.trades.find(t=>t._id===id); if(!x) return;
+  document.getElementById('editTradeId').value = id;
+  document.getElementById('editTradeDate').value = x.date||'';
+  document.getElementById('editTradeType').value = x.type||'Buy';
+  document.getElementById('editTradeAmt').value = x.amt||'';
+  document.getElementById('editTradeBDT').value = x.totalBDT||'';
+  document.getElementById('editTradeProfit').value = x.profit||0;
+  document.getElementById('editTradeComplete').value = String(x.complete)==='1'?'1':'0';
+  document.getElementById('editTradeModal').classList.add('open');
+};
+window.saveEditTrade = async function() {
+  const id = document.getElementById('editTradeId').value;
+  const amt = parseFloat(document.getElementById('editTradeAmt').value)||0;
+  const totalBDT = parseFloat(document.getElementById('editTradeBDT').value)||0;
+  const rate = amt>0&&totalBDT>0 ? (totalBDT/amt).toFixed(2) : '0';
+  await fsUpdate('trades', id, {
+    date: document.getElementById('editTradeDate').value,
+    type: document.getElementById('editTradeType').value,
+    amt: document.getElementById('editTradeAmt').value,
+    totalBDT: document.getElementById('editTradeBDT').value,
+    rate,
+    profit: document.getElementById('editTradeProfit').value,
+    complete: document.getElementById('editTradeComplete').value,
+  });
+  closeModal('editTradeModal');
+};
+
+
+// ── INVESTMENT CALCULATOR ────────────────────────────
+window.saveInvestSettings = async function() {
+  const invest = document.getElementById('p-init-invest').value;
+  const rate   = document.getElementById('p-cur-rate').value;
+  await fsSet(USER_ID+'/config', {
+    categories: window.S.categories,
+    nid: window.S.nid,
+    openingBalance: parseFloat(window.S.openingBalance||0),
+    initInvest: invest,
+    curRate: rate
+  });
+};
+
+window.updateInvestCalc = function() {
+  const invest   = parseFloat(document.getElementById('p-init-invest').value)||0;
+  const curRate  = parseFloat(document.getElementById('p-cur-rate').value)||0;
+
+  // Use pre-calculated values from renderTrades
+  const t        = window.S.trades||[];
+  const buyUSDT  = t.filter(x=>String(x.complete)==='1'&&x.type==='Buy').reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
+  const sellUSDT = t.filter(x=>String(x.complete)==='1'&&x.type==='Sell').reduce((s,x)=>s+(parseFloat(x.amt)||0),0);
+  const buyBDT   = window._buyBDT  || t.filter(x=>String(x.complete)==='1'&&x.type==='Buy').reduce((s,x)=>s+(parseFloat(x.totalBDT)||Math.round((parseFloat(x.amt)||0)*(parseFloat(x.rate)||0))),0);
+  const sellBDT  = window._sellBDT || t.filter(x=>String(x.complete)==='1'&&x.type==='Sell').reduce((s,x)=>s+(parseFloat(x.totalBDT)||Math.round((parseFloat(x.amt)||0)*(parseFloat(x.rate)||0))),0);
+
+  const opening  = parseFloat(window.S.openingBalance||0);
+  const netUSDT  = window._netUSDT !== undefined ? window._netUSDT : (opening + buyUSDT - sellUSDT);
+
+  // Update buy/sell display
+  const tb  = document.getElementById('p-total-buy');
+  const ts  = document.getElementById('p-total-sell');
+  const tbu = document.getElementById('p-total-buy-usdt');
+  const tsu = document.getElementById('p-total-sell-usdt');
+  if(tb)  tb.textContent  = '৳'+Math.round(buyBDT).toLocaleString();
+  if(ts)  ts.textContent  = '৳'+Math.round(sellBDT).toLocaleString();
+  if(tbu) tbu.textContent = buyUSDT.toFixed(2)+' USDT';
+  if(tsu) tsu.textContent = sellUSDT.toFixed(2)+' USDT';
+
+  // Remaining USDT value at current rate
+  const remainValue = netUSDT * curRate;
+  const cvEl = document.getElementById('p-cur-value');
+  const cvuEl = document.getElementById('p-cur-value-usdt');
+  if(cvEl) cvEl.textContent = curRate>0 ? '৳'+Math.round(remainValue).toLocaleString() : '—';
+  if(cvuEl) cvuEl.textContent = netUSDT.toFixed(4)+' USDT × ৳'+(curRate||0);
+
+  // Profit = Sell BDT received + Remaining USDT value - Initial Investment
+  const profitEl = document.getElementById('p-invest-profit');
+  const pctEl    = document.getElementById('p-invest-pct');
+  const formulaEl = document.getElementById('p-invest-formula');
+
+  if(!invest || !curRate) {
+    if(profitEl) profitEl.textContent = '—';
+    if(pctEl)    pctEl.textContent = '—';
+    if(formulaEl) formulaEl.textContent = 'Initial investment আর current rate দাও...';
+    return;
+  }
+
+  // Total recovered = sell BDT + current USDT value
+  const totalRecovered = sellBDT + remainValue;
+  const profit = totalRecovered - invest;
+  const pct    = invest>0 ? ((profit/invest)*100).toFixed(2) : 0;
+
+  if(profitEl){
+    profitEl.textContent = (profit>=0?'+':'')+'৳'+Math.round(profit).toLocaleString();
+    profitEl.style.color = profit>0?'var(--green)':profit<0?'var(--red)':'var(--text)';
+  }
+  if(pctEl){
+    pctEl.textContent = (pct>0?'+':'')+pct+'%';
+    pctEl.style.color = pct>0?'var(--green)':pct<0?'var(--red)':'var(--text)';
+  }
+  if(formulaEl){
+    formulaEl.innerHTML =
+      `Profit = (Sell BDT + Remaining USDT value) - Initial investment<br>`+
+      `= (৳${Math.round(sellBDT).toLocaleString()} + ৳${Math.round(remainValue).toLocaleString()}) - ৳${Math.round(invest).toLocaleString()}`+
+      ` = <strong style="color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}৳${Math.round(profit).toLocaleString()}</strong>`;
+  }
+};
+
+// ── OPENING BALANCE ──────────────────────────────────
+window.editOpeningBalance = function() {
+  document.getElementById('openingBalInput').value = window.S.openingBalance || '';
+  document.getElementById('openingBalModal').classList.add('open');
+};
+window.saveOpeningBalance = async function() {
+  const val = parseFloat(document.getElementById('openingBalInput').value) || 0;
+  window.S.openingBalance = val;
+  await fsSet(USER_ID+'/config', {categories: window.S.categories, nid: window.S.nid, openingBalance: val});
+  closeModal('openingBalModal');
+  renderTrades();
+};
+
+
+// ── CALCULATOR ────────────────────────────────────────
+window.runCalc = function() {
+  const order = parseFloat(document.getElementById('calcOrder').value)||0;
+  const usdt  = parseFloat(document.getElementById('calcUSDTInput').value)||0;
+  const chargePct = parseFloat(document.getElementById('calcCharge').value)||1.85;
+
+  // Always update charge display when order changes
+  if(order>0) {
+    const charge = +(order * chargePct / 100).toFixed(2);
+    const customerPays = +(order + charge).toFixed(2);
+    document.getElementById('calcChargeAmt').textContent = '+৳' + charge.toFixed(2);
+    document.getElementById('calcCustomerPays').textContent = '৳' + customerPays.toFixed(2);
+  } else {
+    document.getElementById('calcChargeAmt').textContent = '—';
+    document.getElementById('calcCustomerPays').textContent = '—';
+  }
+
+  document.getElementById('calcResults').style.display = 'none';
+  document.getElementById('calcEmpty').style.display = 'block';
+
+  if(!order || !usdt) return;
+
+  const charge = +(order * chargePct / 100).toFixed(2);
+  const customerPays = +(order + charge).toFixed(2);
+  // Rate = charge সহ total ÷ USDT
+  const rate = +(customerPays / usdt).toFixed(2);
+
+  document.getElementById('calcRateResult').textContent = '৳' + rate.toFixed(2);
+
+  document.getElementById('calcSummary').innerHTML =
+    `Customer order: <strong>৳${order.toFixed(2)}</strong><br>` +
+    `bKash charge (${chargePct}%): <strong style="color:var(--red)">+৳${charge.toFixed(2)}</strong><br>` +
+    `Customer মোট দেবে: <strong style="color:var(--purple)">৳${customerPays.toFixed(2)}</strong><br>` +
+    `তুমি sell করবে: <strong style="color:var(--green)">${usdt.toFixed(4)} USDT</strong><br>` +
+    `Rate: <strong style="color:var(--purple)">৳${rate.toFixed(2)}/USDT</strong>`;
+
+  document.getElementById('calcResults').style.display = 'block';
+  document.getElementById('calcEmpty').style.display = 'none';
+
+  // Sync ref table
+  document.getElementById('refRate').value = rate;
+  renderRefTable();
+
+  window._calcData = {order, rate, charge, usdt, customerPays, chargePct};
+};
+
+window.useInTrade = function() {
+  if(!window._calcData) return;
+  const {usdt, rate, order, customerPays} = window._calcData;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-p2p').classList.add('active');
+  document.getElementById('pType').value = 'Sell';
+  document.getElementById('pAmt').value = usdt.toFixed(4);
+  document.getElementById('pTotalBDT').value = customerPays.toFixed(2);
+  // trigger rate calc display
+  const r = rate.toFixed(2);
+  document.getElementById('pRateDisplay').textContent = '৳'+r+' / USDT';
+  document.getElementById('pRate').value = r;
+  window.scrollTo(0,0);
+};
+
+const REF_AMOUNTS = [200,300,500,700,1000,1500,2000,3000,5000,10000];
+window.renderRefTable = function() {
+  const rate = parseFloat(document.getElementById('refRate').value)||0;
+  const chargePct = parseFloat(document.getElementById('calcCharge').value)||1.85;
+  document.getElementById('refTableBody').innerHTML = REF_AMOUNTS.map(amt => {
+    const charge = +(amt * chargePct / 100).toFixed(2);
+    const customerPays = +(amt + charge).toFixed(2);
+    const usdt = rate>0 ? (amt/rate).toFixed(4) : '—';
+    return `<tr>
+      <td style="font-weight:500">৳${amt.toLocaleString()}</td>
+      <td style="color:var(--red)">৳${charge.toFixed(2)}</td>
+      <td style="color:var(--purple)">৳${customerPays.toFixed(2)}</td>
+      <td style="color:var(--green);font-weight:500">${usdt}</td>
+    </tr>`;
+  }).join('');
+};
+window.renderRefTable();
+
+// ── SETTINGS ──────────────────────────────────────
+window.renderSettings = function() {
+  document.getElementById('s-habits').textContent = window.S.habits.length;
+  document.getElementById('s-tasks').textContent = window.S.tasks.length;
+  document.getElementById('s-trades').textContent = window.S.trades.length;
+};
+
+window.clearAllData = async function() {
+  if(!confirm('সত্যিই সব data delete করবে?'))return;
+  if(!confirm('একদম শিওর? সব habits, tasks, campaigns, trades মুছে যাবে!'))return;
+  const cols = ['habits','tasks','campaigns','trades'];
+  for(const col of cols) {
+    const snap = await getDocs(collection(db, USER_ID, 'data', col));
+    for(const d of snap.docs) await deleteDoc(d.ref);
+  }
+  window.S.categories = ['FB Ads','P2P','Personal','Client Work','Meeting','Learning','Other'];
+  await fsSet(USER_ID+'/config', {categories:window.S.categories, nid:200});
+  alert('সব data delete হয়েছে।');
+};
+
+// ── ANALYTICS ──────────────────────────────────────
+let habitLineChartInst=null, taskDoughnutInst=null;
+let currentRange='week';
+
+window.setRange = function(r,btn) {
+  currentRange=r;
+  document.querySelectorAll('.range-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAnalytics();
+};
+
+window.renderAnalytics = function() {
+  const days=currentRange==='week'?7:currentRange==='month'?30:365;
+  const dates=[];const now=new Date();
+  for(let i=days-1;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);dates.push(d.toISOString().split('T')[0]);}
+  const total=window.S.habits.length||1;
+  const compPerDay=dates.map(d=>Math.round(window.S.habits.filter(h=>(h.history||{})[d]).length/total*100));
+  let lineLabels,lineData;
+  if(currentRange==='year'){
+    const monthly={};
+    dates.forEach((d,i)=>{const mo=d.slice(0,7);if(!monthly[mo]){monthly[mo]={sum:0,count:0};}monthly[mo].sum+=compPerDay[i];monthly[mo].count++;});
+    lineLabels=Object.keys(monthly).map(m=>['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][new Date(m+'-01').getMonth()]);
+    lineData=Object.values(monthly).map(v=>v.count?Math.round(v.sum/v.count):0);
+  } else { lineLabels=dates.map(d=>{const dd=new Date(d);return currentRange==='week'?['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dd.getDay()]:dd.getDate()+'';});lineData=compPerDay; }
+  const avg=lineData.length?Math.round(lineData.reduce((a,b)=>a+b,0)/lineData.length):0;
+  document.getElementById('a-hcomp').textContent=avg+'%';
+  document.getElementById('a-hcomp-sub').textContent=currentRange==='week'?'this week':currentRange==='month'?'this month':'this year';
+  document.getElementById('a-streak').textContent=window.S.habits.reduce((m,h)=>Math.max(m,h.streak||0),0)+' 🔥';
+  const td=window.S.tasks.filter(t=>t.status==='Done').length,tt=window.S.tasks.length;
+  document.getElementById('a-tdone').textContent=td+'/'+tt;
+  document.getElementById('a-overdue').textContent=window.S.tasks.filter(isOverdue).length;
+  if(habitLineChartInst)habitLineChartInst.destroy();
+  habitLineChartInst=new Chart(document.getElementById('habitLineChart').getContext('2d'),{type:'line',data:{labels:lineLabels,datasets:[{label:'Completion %',data:lineData,borderColor:'#6c5ce7',backgroundColor:'rgba(108,92,231,0.08)',tension:0.4,fill:true,pointBackgroundColor:'#6c5ce7',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{font:{size:11}},grid:{display:false}}}}});
+  const dayScores=dates.map(d=>{const done=window.S.habits.filter(h=>(h.history||{})[d]).length;return{pct:total?Math.round(done/total*100):0,label:new Date(d).toLocaleDateString('en-BD',{weekday:'short',month:'short',day:'numeric'})};});
+  const sortedDs=[...dayScores].sort((a,b)=>b.pct-a.pct);
+  document.getElementById('bestWorstList').innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">🏆 Best days</div>${sortedDs.slice(0,3).map((d,i)=>`<div class="day-rank"><div class="day-rank-num">#${i+1}</div><div class="day-rank-label">${d.label}</div><span class="day-rank-pct badge-green badge">${d.pct}%</span></div>`).join('')}<div style="font-size:12px;font-weight:600;color:var(--red);margin:10px 0 6px">⚠️ Needs work</div>${sortedDs.slice(-3).reverse().map((d,i)=>`<div class="day-rank"><div class="day-rank-num">#${i+1}</div><div class="day-rank-label">${d.label}</div><span class="day-rank-pct badge-red badge">${d.pct}%</span></div>`).join('')}`;
+  document.getElementById('streakTable').innerHTML=window.S.habits.length?window.S.habits.map(h=>`<tr><td style="font-weight:500">${h.name}</td><td><span style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber)">${h.streak||0}</span> 🔥</td><td style="font-size:12px;color:var(--text3)">${h.time?fmtTime(h.time):'—'}</td><td style="font-size:12px;color:var(--text3)">${h.duration?h.duration+' min':'—'}</td><td><span class="badge ${h.lastDone===todayKey?'badge-green':'badge-amber'}">${h.lastDone===todayKey?'Done':'Pending'}</span></td></tr>`).join(''):'<tr><td colspan="5" class="empty">কোনো habit নেই</td></tr>';
+  const heatDates=dates.slice(-28);const maxD=Math.max(1,...heatDates.map(d=>window.S.habits.filter(h=>(h.history||{})[d]).length));
+  document.getElementById('heatmapGrid').innerHTML=heatDates.map(d=>{const n=window.S.habits.filter(h=>(h.history||{})[d]).length;const lv=n===0?'':n/maxD<0.25?'h1':n/maxD<0.5?'h2':n/maxD<0.75?'h3':'h4';return`<div class="heatmap-cell ${lv}" title="${d}: ${n} done"></div>`;}).join('');
+  if(taskDoughnutInst)taskDoughnutInst.destroy();
+  taskDoughnutInst=new Chart(document.getElementById('taskDoughnut').getContext('2d'),{type:'doughnut',data:{labels:['Done','In Progress','Pending'],datasets:[{data:[window.S.tasks.filter(t=>t.status==='Done').length,window.S.tasks.filter(t=>t.status==='In Progress').length,window.S.tasks.filter(t=>t.status==='Not Started').length],backgroundColor:['#00b894','#e17055','#e2e0d8'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:12}}}}});
+  const catCounts={};window.S.tasks.forEach(t=>{catCounts[t.cat]=(catCounts[t.cat]||0)+1;});const catMax=Math.max(1,...Object.values(catCounts));const colors=['#6c5ce7','#00b894','#0984e3','#e17055','#fd79a8','#fdcb6e'];
+  document.getElementById('catBreakdown').innerHTML=Object.keys(catCounts).length?Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).map(([cat,count],i)=>`<div class="cat-bar-row"><div class="cat-bar-label">${cat}</div><div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(count/catMax*100)}%;background:${colors[i%colors.length]}"></div></div><div class="cat-bar-count">${count}</div></div>`).join(''):'<div class="empty">কোনো task নেই</div>';
+  const ov=window.S.tasks.filter(isOverdue);
+  document.getElementById('overdueList').innerHTML=ov.length?ov.map(t=>{const days=Math.round((new Date(todayKey)-new Date(t.date))/(86400000));return`<div class="overdue-item"><div><div style="font-weight:500">${t.name}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${t.cat} · due ${t.date}</div></div><span class="overdue-days">${days}d overdue</span></div>`;}).join(''):'<div class="empty" style="padding:1rem">✅ কোনো overdue task নেই!</div>';
+};
+
+// ── MODALS ──────────────────────────────────────────
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', function(e){ if(e.target===this)window.closeModal(this.id); });
+});
+
+// ── INIT ──────────────────────────────────────────────
+initData();
+</script>
+</body>
+</html>
